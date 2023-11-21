@@ -1,0 +1,227 @@
+--------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\Users\30706\Desktop\122090407.log
+  log type:  text
+ opened on:  14 Nov 2023, 20:36:49
+
+. cd "/Users/30706/Desktop"
+C:\Users\30706\Desktop
+
+. use aghousehold.dta, clear
+
+. 
+. // Assignment 3
+. use Rainfall.dta, clear
+
+. sort vl_id
+
+. drop if missing(av_rain)
+(0 observations deleted)
+
+. tostring vl_id, replace
+vl_id already string; no replace
+
+. save Rainfall.dta, replace
+file Rainfall.dta saved
+
+. 
+. use aghousehold.dta, clear
+
+. sort vl_id
+
+. drop if missing(rental_out_share) | missing(ln_yield)
+(0 observations deleted)
+
+. merge m:1 vl_id using Rainfall.dta
+(variable year was int, now float to accommodate using data's values)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                           397
+        from master                       274  (_merge==1)
+        from using                        123  (_merge==2)
+
+    Matched                            13,897  (_merge==3)
+    -----------------------------------------
+
+. save aghousehold.dta, replace
+file aghousehold.dta saved
+
+. 
+. reg rental_out_share av_rain
+
+      Source |       SS           df       MS      Number of obs   =    13,897
+-------------+----------------------------------   F(1, 13895)     =     36.28
+       Model |  174454.947         1  174454.947   Prob > F        =    0.0000
+    Residual |  66807981.2    13,895   4808.0591   R-squared       =    0.0026
+-------------+----------------------------------   Adj R-squared   =    0.0025
+       Total |  66982436.1    13,896  4820.26742   Root MSE        =     69.34
+
+------------------------------------------------------------------------------
+rental_out~e | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+     av_rain |   .0079141   .0013139     6.02   0.000     .0053388    .0104895
+       _cons |    1.25257   1.345475     0.93   0.352    -1.384742    3.889883
+------------------------------------------------------------------------------
+
+. predict hat_rental_out_share, xb
+(274 missing values generated)
+
+. outreg2 using first_stage_result.doc, replace
+first_stage_result.doc
+dir : seeout
+
+. 
+. reg ln_yield hat_rental_out_share
+
+      Source |       SS           df       MS      Number of obs   =    13,897
+-------------+----------------------------------   F(1, 13895)     =      1.24
+       Model |  .443552753         1  .443552753   Prob > F        =    0.2662
+    Residual |  4985.20884    13,895  .358777174   R-squared       =    0.0001
+-------------+----------------------------------   Adj R-squared   =    0.0000
+       Total |  4985.65239    13,896  .358783275   Root MSE        =    .59898
+
+-------------------------------------------------------------------------------
+     ln_yield | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+hat_rental_~e |   .0015945   .0014341     1.11   0.266    -.0012164    .0044055
+        _cons |   5.924119   .0132614   446.72   0.000     5.898125    5.950113
+-------------------------------------------------------------------------------
+
+. outreg2 using second_stage_result.doc, replace
+second_stage_result.doc
+dir : seeout
+
+. 
+. ivregress 2sls ln_yield (rental_out_share = av_rain)
+
+Instrumental variables 2SLS regression            Number of obs   =     13,897
+                                                  Wald chi2(1)    =       1.21
+                                                  Prob > chi2     =     0.2711
+                                                  R-squared       =          .
+                                                  Root MSE        =      .6051
+
+-------------------------------------------------------------------------------
+     ln_yield | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+rental_out_~e |   .0015945   .0014487     1.10   0.271    -.0012449     .004434
+        _cons |   5.924119   .0133968   442.20   0.000     5.897862    5.950376
+-------------------------------------------------------------------------------
+Endogenous: rental_out_share
+Exogenous:  av_rain
+
+. outreg2 using ivregress_result.doc, replace
+ivregress_result.doc
+dir : seeout
+
+. save aghousehold.dta, replace
+file aghousehold.dta saved
+
+. 
+. use landlaw.dta
+
+. sort vl_id2
+
+. save landlaw.dta, replace
+file landlaw.dta saved
+
+. use aghousehold.dta
+
+. gen vl_id2 = substr(vl_id, 1, 2)
+
+. sort vl_id2
+
+. drop _merge
+
+. merge m:1 vl_id2 using landlaw.dta
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                            14,294  (_merge==3)
+    -----------------------------------------
+
+. ivregress 2sls ln_yield (rental_out_share = av_rain implemented)
+
+Instrumental variables 2SLS regression            Number of obs   =     13,897
+                                                  Wald chi2(1)    =       6.81
+                                                  Prob > chi2     =     0.0090
+                                                  R-squared       =          .
+                                                  Root MSE        =     .63477
+
+-------------------------------------------------------------------------------
+     ln_yield | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+rental_out_~e |    .003361   .0012876     2.61   0.009     .0008373    .0058846
+        _cons |    5.90903   .0122457   482.54   0.000     5.885029    5.933031
+-------------------------------------------------------------------------------
+Endogenous: rental_out_share
+Exogenous:  av_rain implemented
+
+. 
+. // relevance test
+. reg rental_out_share av_rain implemented
+
+      Source |       SS           df       MS      Number of obs   =    13,897
+-------------+----------------------------------   F(2, 13894)     =     25.30
+       Model |    243039.2         2    121519.6   Prob > F        =    0.0000
+    Residual |  66739396.9    13,894   4803.4689   R-squared       =    0.0036
+-------------+----------------------------------   Adj R-squared   =    0.0035
+       Total |  66982436.1    13,896  4820.26742   Root MSE        =    69.307
+
+------------------------------------------------------------------------------
+rental_out~e | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+     av_rain |   .0075543   .0013167     5.74   0.000     .0049734    .0101352
+ implemented |   4.786087   1.266619     3.78   0.000     2.303344     7.26883
+       _cons |  -1.683995   1.553234    -1.08   0.278    -4.728543    1.360554
+------------------------------------------------------------------------------
+
+. 
+. // exogenous test
+. reg ln_yield rental_out_share
+
+      Source |       SS           df       MS      Number of obs   =    14,171
+-------------+----------------------------------   F(1, 14169)     =     19.59
+       Model |  6.96783523         1  6.96783523   Prob > F        =    0.0000
+    Residual |  5038.94279    14,169  .355631505   R-squared       =    0.0014
+-------------+----------------------------------   Adj R-squared   =    0.0013
+       Total |  5045.91063    14,170  .356098139   Root MSE        =    .59635
+
+-------------------------------------------------------------------------------
+     ln_yield | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+rental_out_~e |   .0003204   .0000724     4.43   0.000     .0001785    .0004623
+        _cons |   5.938669   .0050475  1176.56   0.000     5.928776    5.948563
+-------------------------------------------------------------------------------
+
+. predict res, residuals
+(123 missing values generated)
+
+. reg res av_rain implemented
+
+      Source |       SS           df       MS      Number of obs   =    13,897
+-------------+----------------------------------   F(2, 13894)     =      5.83
+       Model |  4.17596319         2  2.08798159   Prob > F        =    0.0029
+    Residual |   4974.7517    13,894   .35805036   R-squared       =    0.0008
+-------------+----------------------------------   Adj R-squared   =    0.0007
+       Total |  4978.92766    13,896  .358299342   Root MSE        =    .59837
+
+------------------------------------------------------------------------------
+         res | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+     av_rain |   7.37e-06   .0000114     0.65   0.517    -.0000149    .0000297
+ implemented |   .0360577   .0109355     3.30   0.001     .0146226    .0574928
+       _cons |  -.0350782   .0134101    -2.62   0.009    -.0613638   -.0087927
+------------------------------------------------------------------------------
+
+. 
+. save aghousehold.dta, replace
+file aghousehold.dta saved
+
+. log close
+      name:  <unnamed>
+       log:  C:\Users\30706\Desktop\122090407.log
+  log type:  text
+ closed on:  14 Nov 2023, 20:36:50
+--------------------------------------------------------------------------------
